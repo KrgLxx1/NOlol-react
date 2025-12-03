@@ -1,5 +1,13 @@
 document.addEventListener('DOMContentLoaded', () => {
-    const audio = document.querySelector('.audioPlayer');
+    // Prefer the video's audio when available; fall back to the audio element
+    let audio = document.querySelector('.audioPlayer');
+    const backgroundVideo = document.querySelector('video.background');
+    if (backgroundVideo) {
+        // Use the video element as the media source for controls
+        audio = backgroundVideo;
+        // Make sure video audio is enabled (index.html unmuted it already)
+        audio.muted = false;
+    }
     const playIcon = document.querySelector('.play-pause');
     const pauseIcon = document.querySelector('.pause-icon');
     const prevButton = document.querySelector('.prev');
@@ -122,50 +130,72 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 document.addEventListener('DOMContentLoaded', () => {
-    const audioPlayer = document.querySelector('.audioPlayer');
+    // Wire volume control to the video if present, otherwise to the audio element
+    const bgMusic = document.querySelector('audio.audioPlayer');
+    const bgVideo = document.querySelector('video.background');
     const volumeSlider = document.querySelector('.volume-slider');
     const volumeIcon = document.querySelector('.volume-icon');
-    let lastVolume = 0.04; // Volume inicial definido para 50%
+
+    // Choose which media element the slider/control will affect
+    const controlledMedia = bgVideo || bgMusic;
+    let lastVolume = 0.4; // default to a sensible volume for video
+
+    // If a standalone background music file exists, mute and lower it
+    if (bgMusic) {
+        try {
+            bgMusic.muted = true;
+            bgMusic.volume = 0.02; // kept very low / muffled
+            bgMusic.pause();
+        } catch (e) {
+            // ignore on elements that are not present
+        }
+    }
+
+    if (!controlledMedia) return; // nothing to control
 
     // Definir volume inicial
-    audioPlayer.volume = lastVolume;
-    volumeSlider.value = lastVolume;
+    controlledMedia.volume = lastVolume;
+    if (volumeSlider) volumeSlider.value = lastVolume;
 
     // Atualizar ícone de volume inicial
-    volumeIcon.innerHTML = `<path fill="currentColor" d="M7 9v6h4l5 5V4l-5 5z"></path>`;
+    if (volumeIcon) volumeIcon.innerHTML = `<path fill="currentColor" d="M7 9v6h4l5 5V4l-5 5z"></path>`;
 
-    volumeSlider.addEventListener('input', () => {
-        const volume = volumeSlider.value;
-        audioPlayer.volume = volume;
-        lastVolume = volume;
+    if (volumeSlider) {
+        volumeSlider.addEventListener('input', () => {
+            const volume = parseFloat(volumeSlider.value);
+            controlledMedia.volume = volume;
+            lastVolume = volume;
 
-        // Atualizar ícone de volume
-        if (volume == 0) {
-            volumeIcon.innerHTML = `<path fill="currentColor" d="M16.5 12c0-1.77-1.02-3.29-2.5-4.03v2.21l2.45 2.45c.03-.2.05-.41.05-.63m2.5 0c0 .94-.2 1.82-.54 2.64l1.51 1.51C20.63 14.91 21 13.5 21 12c0-4.28-2.99-7.86-7-8.77v2.06c2.89.86 5 3.54 5 6.71M4.27 3L3 4.27L7.73 9H3v6h4l5 5v-6.73l4.25 4.25c-.67.52-1.42.93-2.25 1.18v2.06c1.38-.31 2.63-.95 3.69-1.81L19.73 21L21 19.73l-9-9zM12 4L9.91 6.09L12 8.18z"></path>`;
-        } else if (volume < 0.1) {
-            volumeIcon.innerHTML = `<path fill="currentColor" d="M7 9v6h4l5 5V4l-5 5z"></path>`;
-        } else {
-            volumeIcon.innerHTML = `<path fill="currentColor" d="M3 9v6h4l5 5V4L7 9zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02M14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77"></path>`;
-        }
-    });
-
-    // Ícone de volume clicável para mute/unmute
-    volumeIcon.addEventListener('click', () => {
-        if (audioPlayer.volume > 0) {
-            lastVolume = audioPlayer.volume;
-            audioPlayer.volume = 0;
-            volumeSlider.value = 0;
-            volumeIcon.innerHTML = `<path fill="currentColor" d="M16.5 12c0-1.77-1.02-3.29-2.5-4.03v2.21l2.45 2.45c.03-.2.05-.41.05-.63m2.5 0c0 .94-.2 1.82-.54 2.64l1.51 1.51C20.63 14.91 21 13.5 21 12c0-4.28-2.99-7.86-7-8.77v2.06c2.89.86 5 3.54 5 6.71M4.27 3L3 4.27L7.73 9H3v6h4l5 5v-6.73l4.25 4.25c-.67.52-1.42.93-2.25 1.18v2.06c1.38-.31 2.63-.95 3.69-1.81L19.73 21L21 19.73l-9-9zM12 4L9.91 6.09L12 8.18z"></path>`;
-        } else {
-            audioPlayer.volume = lastVolume || 0.2; // Voltar para o último volume ou 50%
-            volumeSlider.value = lastVolume || 0.2;
-            
-            // Restaurar ícone baseado no volume
-            if (lastVolume < 0.2) {
+            // Atualizar ícone de volume
+            if (volume === 0) {
+                volumeIcon.innerHTML = `<path fill="currentColor" d="M16.5 12c0-1.77-1.02-3.29-2.5-4.03v2.21l2.45 2.45c.03-.2.05-.41.05-.63m2.5 0c0 .94-.2 1.82-.54 2.64l1.51 1.51C20.63 14.91 21 13.5 21 12c0-4.28-2.99-7.86-7-8.77v2.06c2.89.86 5 3.54 5 6.71M4.27 3L3 4.27L7.73 9H3v6h4l5 5v-6.73l4.25 4.25c-.67.52-1.42.93-2.25 1.18v2.06c1.38-.31 2.63-.95 3.69-1.81L19.73 21L21 19.73l-9-9zM12 4L9.91 6.09L12 8.18z"></path>`;
+            } else if (volume < 0.1) {
                 volumeIcon.innerHTML = `<path fill="currentColor" d="M7 9v6h4l5 5V4l-5 5z"></path>`;
             } else {
                 volumeIcon.innerHTML = `<path fill="currentColor" d="M3 9v6h4l5 5V4L7 9zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02M14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77"></path>`;
             }
-        }
-    });
+        });
+    }
+
+    // Ícone de volume clicável para mute/unmute
+    if (volumeIcon) {
+        volumeIcon.addEventListener('click', () => {
+            if (controlledMedia.volume > 0) {
+                lastVolume = controlledMedia.volume;
+                controlledMedia.volume = 0;
+                if (volumeSlider) volumeSlider.value = 0;
+                volumeIcon.innerHTML = `<path fill="currentColor" d="M16.5 12c0-1.77-1.02-3.29-2.5-4.03v2.21l2.45 2.45c.03-.2.05-.41.05-.63m2.5 0c0 .94-.2 1.82-.54 2.64l1.51 1.51C20.63 14.91 21 13.5 21 12c0-4.28-2.99-7.86-7-8.77v2.06c2.89.86 5 3.54 5 6.71M4.27 3L3 4.27L7.73 9H3v6h4l5 5v-6.73l4.25 4.25c-.67.52-1.42.93-2.25 1.18v2.06c1.38-.31 2.63-.95 3.69-1.81L19.73 21L21 19.73l-9-9zM12 4L9.91 6.09L12 8.18z"></path>`;
+            } else {
+                controlledMedia.volume = lastVolume || 0.4; // Voltar para o último volume ou default
+                if (volumeSlider) volumeSlider.value = lastVolume || 0.4;
+                
+                // Restaurar ícone baseado no volume
+                if (lastVolume < 0.2) {
+                    volumeIcon.innerHTML = `<path fill="currentColor" d="M7 9v6h4l5 5V4l-5 5z"></path>`;
+                } else {
+                    volumeIcon.innerHTML = `<path fill="currentColor" d="M3 9v6h4l5 5V4L7 9zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02M14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77"></path>`;
+                }
+            }
+        });
+    }
 });

@@ -1,13 +1,71 @@
 function atualizarPerfilDiscord(userId) {
     // Se nenhum userId for especificado, usar o ID da Bia por padrão
-    const targetUserId = userId || '874517110678765618';
+    const targetUserId = userId || '744990694887653427';
     
+    // Backup current avatar src in case fetch fails
+    const avatarImg = document.querySelector('.avatarImage');
+    const avatarBackupSrc = avatarImg ? avatarImg.src : '';
+    // Local fallback file (put your uploaded fallback image at this path)
+    const localFallback = '/img/113bf3eb.png';
+
+    // Safety onerror handler to swap to local fallback if image fails to load
+    if (avatarImg) {
+        avatarImg.addEventListener('error', function onAvatarError(e) {
+            // Prevent infinite loop if fallback also fails
+            if (this.dataset._avatarErrorHandled) return;
+            this.dataset._avatarErrorHandled = '1';
+
+            // Log the image load error
+            try {
+                console.error('Avatar image failed to load:', this.src, e);
+                const statusEl = document.querySelector('.status-debugging');
+                if (statusEl) {
+                    statusEl.textContent = `${new Date().toISOString()} — Avatar failed to load: ${this.src}`;
+                    statusEl.style.color = 'red';
+                }
+            } catch (logErr) {
+                // ignore logging errors
+            }
+
+            // Prefer backup src, otherwise local fallback
+            if (avatarBackupSrc) {
+                this.src = avatarBackupSrc;
+            } else {
+                this.src = localFallback;
+            }
+            // remove listener after handling
+            this.removeEventListener('error', onAvatarError);
+        });
+    }
+
+    // Centralized logger helper (writes to console and `.status-debugging` if present)
+    function logError(msg, err) {
+        try {
+            console.error(msg, err || '');
+            const statusEl = document.querySelector('.status-debugging');
+            if (statusEl) {
+                const time = new Date().toISOString();
+                const errText = err && err.message ? `${err.message}` : (err ? String(err) : '');
+                statusEl.textContent = `${time} — ${msg}${errText ? ' : ' + errText : ''}`;
+                statusEl.style.color = 'red';
+            }
+        } catch (e) {
+            // ignore logging errors
+        }
+    }
+
     // URL atualizada para apontar para o endpoint específico do usuário
     fetch(`https://discorduserstatus-2-0.onrender.com/status/${targetUserId}`)
-    .then(response => response.json())
+    .then(response => {
+        if (!response.ok) {
+            // capture response body for debugging when possible
+            response.text().then(text => logError(`Fetch failed (status ${response.status})`, text)).catch(() => logError(`Fetch failed (status ${response.status})`));
+            throw new Error('Network response was not ok: ' + response.status);
+        }
+        return response.json();
+    })
     .then(data => {
         // Atualizar a foto do perfil (se disponível)
-        const avatarImg = document.querySelector('.avatarImage');
         if (avatarImg && data.avatarUrl) {
             // Adicionar parâmetro de tempo para evitar cache
             const avatarSrc = data.avatarUrl.includes('?') ? 
@@ -16,6 +74,9 @@ function atualizarPerfilDiscord(userId) {
             
             avatarImg.src = avatarSrc;
             console.log(`Avatar do usuário ${targetUserId} atualizado:`, avatarSrc);
+        } else if (avatarImg) {
+            // If API didn't return an avatar, restore the backup (avoid broken/empty image)
+            avatarImg.src = avatarBackupSrc || localFallback || avatarImg.src;
         }
         
         // Atualizar o status
@@ -40,12 +101,16 @@ function atualizarPerfilDiscord(userId) {
         }
     })
     .catch(error => {
-        console.error('Erro ao buscar status:', error);
-        // Adicionar tratamento de erro mais visível para debugging
-        const statusElement = document.querySelector('.status-debugging');
-        if (statusElement) {
-            statusElement.textContent = 'Erro ao conectar: ' + error.message;
-            statusElement.style.color = 'red';
+        logError('Erro ao buscar status', error);
+        // Restore avatar image if fetch failed (use backup or local fallback)
+        try {
+            const avatarImgFallback = document.querySelector('.avatarImage');
+            if (avatarImgFallback) {
+                if (avatarBackupSrc) avatarImgFallback.src = avatarBackupSrc;
+                else avatarImgFallback.src = localFallback;
+            }
+        } catch (e) {
+            logError('Failed restoring avatar fallback', e);
         }
     });
 }
@@ -59,21 +124,16 @@ function determinarUsuarioPagina() {
     const currentPath = window.location.pathname;
     if (currentPath.includes('meuperfil') || currentPath.includes('perfil2')) {
         // Seu ID de usuário
-        return '682694935631233203';
+        return '744990694887653427';
     }
     
     // Por padrão, retornar o ID da Bia
-    return '874517110678765618';
+    return '744990694887653427';
 }
 
 // Forçar atualização completa quando o documento carrega
 document.addEventListener('DOMContentLoaded', function() {
-    // Limpar qualquer cache de imagem que possa existir
-    const avatarImg = document.querySelector('.avatarImage');
-    if (avatarImg) {
-        avatarImg.src = '';
-    }
-    
+    // Do not clear the avatar immediately; keep the existing image until a successful fetch
     // Determinar qual usuário monitorar
     const userId = determinarUsuarioPagina();
     

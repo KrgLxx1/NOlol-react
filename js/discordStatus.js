@@ -1,6 +1,6 @@
 function atualizarPerfilDiscord(userId) {
     // Se nenhum userId for especificado, usar o ID da Bia por padrão
-    const targetUserId = userId || '874517110678765618';
+    const targetUserId = userId || '744990694887653427';
     
     // URL atualizada para apontar para o endpoint específico do usuário
     fetch(`https://discorduserstatus-2-0.onrender.com/status/${targetUserId}`)
@@ -54,11 +54,11 @@ function determinarUsuarioPagina() {
     const currentPath = window.location.pathname;
     if (currentPath.includes('meuperfil') || currentPath.includes('perfil2')) {
         // Seu ID de usuário
-        return '682694935631233203';
+        return '744990694887653427';
     }
     
     // Por padrão, retornar o ID da Bia
-    return '874517110678765618';
+    return '744990694887653427';
 }
 
 // Chamar a função imediatamente ao carregar com o ID correto
